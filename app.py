@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup as bs
 from urllib.request import urlopen as uReq
 import logging
 logging.basicConfig(filename="scrapper.log" , level=logging.INFO)
+import pymongo
 
 app = Flask(__name__)
 
@@ -17,6 +18,7 @@ def index():
     if request.method == 'POST':
         try:
             searchString = request.form['content'].replace(" ","")
+            print(searchString)
             flipkart_url = "https://www.flipkart.com/search?q=" + searchString
             uClient = uReq(flipkart_url)
             flipkartPage = uClient.read()
@@ -26,7 +28,7 @@ def index():
             del bigboxes[0:3]
             box = bigboxes[0]
             productLink = "https://www.flipkart.com" + box.div.div.div.a['href']
-            prodRes = requests.get(productLink)
+            prodRes = requests.get(productLink,verify=False)
             prodRes.encoding='utf-8'
             prod_html = bs(prodRes.text, "html.parser")
             print(prod_html)
@@ -72,6 +74,13 @@ def index():
                           "Comment": custComment}
                 reviews.append(mydict)
             logging.info("log my final result {}".format(reviews))
+
+            client = pymongo.MongoClient(
+                "mongodb+srv://abhinandan:admin@cluster0.mwmc8cj.mongodb.net/?retryWrites=true&w=majority")
+            db = client.test
+            db=client['review_scrap']
+            coll_data=db['review_scrap_data']
+            coll_data.insert_many(reviews)
             return render_template('result.html', reviews=reviews[0:(len(reviews)-1)])
         except Exception as e:
             logging.info(e)
